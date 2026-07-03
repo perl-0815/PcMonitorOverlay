@@ -8,12 +8,24 @@ using PcMonitorOverlay.Services;
 using PcMonitorOverlay.Settings;
 using Drawing = System.Drawing;
 using Forms = System.Windows.Forms;
+using WpfBrush = System.Windows.Media.Brush;
 using WpfButtonBase = System.Windows.Controls.Primitives.ButtonBase;
+using WpfColor = System.Windows.Media.Color;
+using WpfSolidColorBrush = System.Windows.Media.SolidColorBrush;
 
 namespace PcMonitorOverlay;
 
 public partial class MainWindow : Window
 {
+    private static readonly WpfBrush ActiveTopmostBackground = CreateBrush(210, 25, 139, 119);
+    private static readonly WpfBrush ActiveTopmostBorder = CreateBrush(255, 55, 214, 178);
+    private static readonly WpfBrush ActiveLockBackground = CreateBrush(210, 178, 111, 24);
+    private static readonly WpfBrush ActiveLockBorder = CreateBrush(255, 242, 184, 75);
+    private static readonly WpfBrush InactiveBackground = CreateBrush(28, 255, 255, 255);
+    private static readonly WpfBrush InactiveBorder = CreateBrush(48, 255, 255, 255);
+    private static readonly WpfBrush InactiveForeground = CreateBrush(190, 216, 224, 232);
+    private static readonly WpfBrush ActiveForeground = CreateBrush(255, 244, 247, 250);
+
     private readonly DispatcherTimer _timer;
     private readonly HardwareMonitorService _monitor;
     private readonly OverlaySettings _settings;
@@ -235,7 +247,11 @@ public partial class MainWindow : Window
     private void UpdateTopmostState()
     {
         TopmostButton.Content = Topmost ? "PIN" : "FREE";
-        TopmostButton.Opacity = Topmost ? 1 : 0.72;
+        ApplyToggleButtonVisual(
+            TopmostButton,
+            Topmost,
+            ActiveTopmostBackground,
+            ActiveTopmostBorder);
 
         if (_topmostMenuItem is not null)
         {
@@ -246,11 +262,34 @@ public partial class MainWindow : Window
     private void UpdateLockState()
     {
         LockButton.Content = _settings.MovementLocked ? "LOCKED" : "LOCK";
-        LockButton.Opacity = _settings.MovementLocked ? 1 : 0.72;
+        ApplyToggleButtonVisual(
+            LockButton,
+            _settings.MovementLocked,
+            ActiveLockBackground,
+            ActiveLockBorder);
 
         if (_lockMenuItem is not null)
         {
             _lockMenuItem.Checked = _settings.MovementLocked;
         }
+    }
+
+    private static void ApplyToggleButtonVisual(
+        System.Windows.Controls.Button button,
+        bool isActive,
+        WpfBrush activeBackground,
+        WpfBrush activeBorder)
+    {
+        button.Background = isActive ? activeBackground : InactiveBackground;
+        button.BorderBrush = isActive ? activeBorder : InactiveBorder;
+        button.Foreground = isActive ? ActiveForeground : InactiveForeground;
+        button.Opacity = 1;
+    }
+
+    private static WpfBrush CreateBrush(byte alpha, byte red, byte green, byte blue)
+    {
+        var brush = new WpfSolidColorBrush(WpfColor.FromArgb(alpha, red, green, blue));
+        brush.Freeze();
+        return brush;
     }
 }
