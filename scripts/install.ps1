@@ -13,10 +13,12 @@ $ErrorActionPreference = "Stop"
 $appName = "PC Monitor Overlay"
 $processName = "PcMonitorOverlay"
 $exeName = "PcMonitorOverlay.exe"
+$uninstallerExeName = "PcMonitorOverlayUninstaller.exe"
 $repoRoot = Split-Path -Parent $PSScriptRoot
-$project = Join-Path $repoRoot "PcMonitorOverlay\PcMonitorOverlay.csproj"
+$project = Join-Path $repoRoot "src\PcMonitorOverlay\PcMonitorOverlay.csproj"
 $publishDir = Join-Path $repoRoot "dist-portable"
 $portableExe = Join-Path $publishDir $exeName
+$portableUninstaller = Join-Path $publishDir $uninstallerExeName
 
 function Write-Step {
     param([string]$Message)
@@ -88,19 +90,8 @@ function Install-DotNet8Sdk {
 }
 
 function Publish-PortableBuild {
-    param([string]$DotNet)
-
     Write-Step "Creating portable build"
-    New-Item -ItemType Directory -Force -Path $publishDir | Out-Null
-
-    & $DotNet publish $project `
-        -c Release `
-        -r win-x64 `
-        --self-contained true `
-        -p:PublishSingleFile=true `
-        -p:IncludeNativeLibrariesForSelfExtract=true `
-        -p:EnableCompressionInSingleFile=true `
-        -o $publishDir
+    & (Join-Path $PSScriptRoot "publish-portable.ps1")
 
     if ($LASTEXITCODE -ne 0) {
         throw "Publish failed."
@@ -164,7 +155,7 @@ if ((Test-Path $project) -and -not $UseExistingBuild) {
         throw ".NET 8 SDK is still unavailable. Open a new PowerShell window and run this script again."
     }
 
-    Publish-PortableBuild -DotNet $dotnet
+    Publish-PortableBuild
 }
 elseif (-not (Test-Path $portableExe)) {
     if (-not (Test-Path $project)) {
@@ -181,7 +172,7 @@ elseif (-not (Test-Path $portableExe)) {
         throw ".NET 8 SDK is still unavailable. Open a new PowerShell window and run this script again."
     }
 
-    Publish-PortableBuild -DotNet $dotnet
+    Publish-PortableBuild
 }
 else {
     Write-Step "Using existing portable build"
@@ -193,11 +184,18 @@ if (-not (Test-Path $portableExe)) {
 
 $installPath = [System.IO.Path]::GetFullPath($InstallDir)
 $installedExe = Join-Path $installPath $exeName
+$installedUninstaller = Join-Path $installPath $uninstallerExeName
 
 Write-Step "Installing to $installPath"
 New-Item -ItemType Directory -Force -Path $installPath | Out-Null
 Stop-InstalledProcess -InstalledExe $installedExe
 Copy-Item -LiteralPath $portableExe -Destination $installedExe -Force
+
+if (Test-Path $portableUninstaller) {
+    Copy-Item -LiteralPath $portableUninstaller -Destination $installedUninstaller -Force
+}
+
+Copy-Item -LiteralPath (Join-Path $publishDir "README.txt") -Destination (Join-Path $installPath "README.txt") -Force -ErrorAction SilentlyContinue
 
 $portablePdb = Join-Path $publishDir "PcMonitorOverlay.pdb"
 if (Test-Path $portablePdb) {
@@ -205,11 +203,18 @@ if (Test-Path $portablePdb) {
 }
 
 if (-not $NoStartMenuShortcut) {
-    $programs = [Environment]::GetFolderPath("Programs")
+    $programs = Join-Path ([Environment]::GetFolderPath("Programs")) $appName
     New-AppShortcut `
         -ShortcutPath (Join-Path $programs "$appName.lnk") `
         -TargetPath $installedExe `
         -WorkingDirectory $installPath
+
+    if (Test-Path $installedUninstaller) {
+        New-AppShortcut `
+            -ShortcutPath (Join-Path $programs "Uninstall $appName.lnk") `
+            -TargetPath $installedUninstaller `
+            -WorkingDirectory $installPath
+    }
 }
 
 if (-not $NoDesktopShortcut) {

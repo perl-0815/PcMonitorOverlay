@@ -8,8 +8,10 @@ $ErrorActionPreference = "Stop"
 $appName = "PC Monitor Overlay"
 $processName = "PcMonitorOverlay"
 $exeName = "PcMonitorOverlay.exe"
+$uninstallerExeName = "PcMonitorOverlayUninstaller.exe"
 $installPath = [System.IO.Path]::GetFullPath($InstallDir)
 $installedExe = Join-Path $installPath $exeName
+$installedUninstaller = Join-Path $installPath $uninstallerExeName
 
 function Write-Step {
     param([string]$Message)
@@ -82,9 +84,17 @@ Get-Process $processName -ErrorAction SilentlyContinue |
     Stop-Process -Force
 
 Write-Step "Removing shortcuts"
+$startMenuDirectory = Join-Path ([Environment]::GetFolderPath("Programs")) $appName
+Remove-AppShortcut -ShortcutPath (Join-Path $startMenuDirectory "$appName.lnk") -TargetPath $installedExe
+Remove-AppShortcut -ShortcutPath (Join-Path $startMenuDirectory "Uninstall $appName.lnk") -TargetPath $installedUninstaller
 Remove-AppShortcut -ShortcutPath (Join-Path ([Environment]::GetFolderPath("Programs")) "$appName.lnk") -TargetPath $installedExe
+Remove-AppShortcut -ShortcutPath (Join-Path ([Environment]::GetFolderPath("Programs")) "Uninstall $appName.lnk") -TargetPath $installedUninstaller
 Remove-AppShortcut -ShortcutPath (Join-Path ([Environment]::GetFolderPath("Desktop")) "$appName.lnk") -TargetPath $installedExe
 Remove-AppShortcut -ShortcutPath (Join-Path ([Environment]::GetFolderPath("Startup")) "$appName.lnk") -TargetPath $installedExe
+
+if ((Test-Path $startMenuDirectory -PathType Container) -and -not (Get-ChildItem -LiteralPath $startMenuDirectory -Force)) {
+    Remove-Item -LiteralPath $startMenuDirectory -Force
+}
 
 if (Test-Path $installPath) {
     Assert-SafeInstallDirectory -Path $installPath -ExpectedExe $installedExe
