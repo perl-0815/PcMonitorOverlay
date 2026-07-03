@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Resources;
 using System.Windows.Threading;
 using PcMonitorOverlay.Controls;
 using PcMonitorOverlay.Models;
@@ -31,6 +32,7 @@ public partial class MainWindow : Window
     private readonly OverlaySettings _settings;
     private bool _settingsApplied;
     private Forms.NotifyIcon? _notifyIcon;
+    private Drawing.Icon? _trayIcon;
     private Forms.ToolStripMenuItem? _topmostMenuItem;
     private Forms.ToolStripMenuItem? _lockMenuItem;
 
@@ -63,6 +65,7 @@ public partial class MainWindow : Window
         _timer.Stop();
         _monitor.Dispose();
         _notifyIcon?.Dispose();
+        _trayIcon?.Dispose();
     }
 
     private void RefreshMetrics()
@@ -165,14 +168,28 @@ public partial class MainWindow : Window
         exitItem.Click += (_, _) => Close();
         menu.Items.Add(exitItem);
 
+        _trayIcon = LoadTrayIcon();
         _notifyIcon = new Forms.NotifyIcon
         {
             Text = "PC Monitor Overlay",
-            Icon = Drawing.SystemIcons.Application,
+            Icon = _trayIcon,
             ContextMenuStrip = menu,
             Visible = true
         };
         _notifyIcon.DoubleClick += (_, _) => ShowOverlay();
+    }
+
+    private static Drawing.Icon LoadTrayIcon()
+    {
+        var iconUri = new Uri("pack://application:,,,/Assets/app.ico", UriKind.Absolute);
+        StreamResourceInfo? iconResource = System.Windows.Application.GetResourceStream(iconUri);
+        if (iconResource is null)
+        {
+            return new Drawing.Icon(Drawing.SystemIcons.Application, Drawing.SystemIcons.Application.Size);
+        }
+
+        using var stream = iconResource.Stream;
+        return new Drawing.Icon(stream);
     }
 
     private void ShowOverlay()

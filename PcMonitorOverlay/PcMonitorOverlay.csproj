@@ -7,11 +7,17 @@
     <RootNamespace>PcMonitorOverlay</RootNamespace>
     <Description>Lightweight Windows overlay for CPU, memory, GPU, and VRAM monitoring.</Description>
     <RepositoryUrl>https://github.com/perl-0815/PcMonitorOverlay</RepositoryUrl>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\app.ico" />
+    <Resource Include="Assets\icon.png" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.6" />
