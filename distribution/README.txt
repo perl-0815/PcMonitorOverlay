@@ -15,5 +15,6 @@ PC Monitor Overlay
 
 補足:
   - 配布版は self-contained です。実行だけなら .NET Runtime / SDK は不要です。
+  - 発行元警告を減らすには、配布前に scripts\sign-dist.ps1 で exe を署名してください。
   - インストール先は %LOCALAPPDATA%\Programs\PcMonitorOverlay です。
   - 設定は %LOCALAPPDATA%\PcMonitorOverlay\settings.json に保存されます。

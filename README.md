@@ -165,6 +165,50 @@ README.txt
 
 この `dist-portable` フォルダを zip 化すれば、そのまま配布できます。
 
+## コード署名
+
+Windows で「発行元不明」や SmartScreen の警告を減らすには、配布する exe に Authenticode 署名を行います。
+
+まず配布用フォルダを作成します。
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\publish-portable.ps1
+```
+
+PFX 証明書を使う場合:
+
+```powershell
+$env:CODESIGN_PFX_PASSWORD = "pfx-password"
+powershell -ExecutionPolicy Bypass -File .\scripts\sign-dist.ps1 -PfxPath .\certs\codesign.pfx
+```
+
+証明書ストアの thumbprint を使う場合:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\sign-dist.ps1 -CertThumbprint ABCD1234...
+```
+
+証明書名で選ぶ場合:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\sign-dist.ps1 -CertSubject "Your Publisher Name"
+```
+
+ローカルのコード署名証明書を確認する場合:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\sign-dist.ps1 -ListCertificates
+```
+
+署名対象は `PcMonitorOverlay.exe`、`PcMonitorOverlayInstaller.exe`、`PcMonitorOverlayUninstaller.exe` です。署名後に `signtool verify /pa /v` で検証します。
+
+補足:
+
+- `signtool.exe` が必要です。Visual Studio または Windows SDK に含まれます。
+- 署名すると「発行元不明」は改善できます。
+- 署名済みでも、公開直後は SmartScreen の評判が十分でないため警告が出る場合があります。
+- 同じ発行元証明書で継続して配布すると、発行元の評判が蓄積されやすくなります。
+
 ## ディレクトリ構成
 
 ```text
@@ -190,6 +234,7 @@ README.txt
 |   |-- build.ps1
 |   |-- install.ps1
 |   |-- publish-portable.ps1
+|   |-- sign-dist.ps1
 |   `-- uninstall.ps1
 `-- README.md
 ```
