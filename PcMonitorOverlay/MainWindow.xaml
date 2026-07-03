@@ -1,0 +1,299 @@
+<Window x:Class="PcMonitorOverlay.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:PcMonitorOverlay.Controls"
+        Title="PC Monitor Overlay"
+        Width="520"
+        Height="330"
+        MinWidth="430"
+        MinHeight="270"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ResizeMode="CanResizeWithGrip"
+        ShowInTaskbar="False"
+        Topmost="True"
+        MouseLeftButtonDown="Root_MouseLeftButtonDown"
+        Closing="Window_Closing"
+        Loaded="Window_Loaded">
+    <Window.Resources>
+        <SolidColorBrush x:Key="PanelBackgroundBrush" Color="#E8111316" />
+        <SolidColorBrush x:Key="PanelBorderBrush" Color="#52FFFFFF" />
+        <SolidColorBrush x:Key="CardBackgroundBrush" Color="#CC1A1D22" />
+        <SolidColorBrush x:Key="CardBorderBrush" Color="#28FFFFFF" />
+        <SolidColorBrush x:Key="TextPrimaryBrush" Color="#F4F7FA" />
+        <SolidColorBrush x:Key="TextSecondaryBrush" Color="#B8C0C8" />
+        <SolidColorBrush x:Key="MutedBrush" Color="#7E8791" />
+        <SolidColorBrush x:Key="CpuBrush" Color="#37D6B2" />
+        <SolidColorBrush x:Key="MemoryBrush" Color="#F2B84B" />
+        <SolidColorBrush x:Key="GpuBrush" Color="#FF6B8E" />
+        <SolidColorBrush x:Key="VramBrush" Color="#69A7FF" />
+
+        <Style x:Key="ToolbarButtonStyle" TargetType="Button">
+            <Setter Property="Height" Value="28" />
+            <Setter Property="MinWidth" Value="42" />
+            <Setter Property="Padding" Value="10,0" />
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+            <Setter Property="Background" Value="#24FFFFFF" />
+            <Setter Property="BorderBrush" Value="#35FFFFFF" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#38FFFFFF" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#4CFFFFFF" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="MetricCardStyle" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource CardBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource CardBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="12" />
+            <Setter Property="Margin" Value="5" />
+            <Setter Property="MinHeight" Value="110" />
+        </Style>
+    </Window.Resources>
+
+    <Border x:Name="OverlayPanel"
+            Background="{StaticResource PanelBackgroundBrush}"
+            BorderBrush="{StaticResource PanelBorderBrush}"
+            BorderThickness="1"
+            CornerRadius="8"
+            SnapsToDevicePixels="True">
+        <Grid Margin="12">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="38" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <Grid Grid.Row="0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="PC Monitor"
+                               Foreground="{StaticResource TextPrimaryBrush}"
+                               FontSize="16"
+                               FontWeight="SemiBold" />
+                    <TextBlock x:Name="StatusText"
+                               Margin="10,2,0,0"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               FontSize="11"
+                               VerticalAlignment="Center"
+                               Text="Starting" />
+                </StackPanel>
+
+                <StackPanel Grid.Column="1"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Center">
+                    <TextBlock Text="Opacity"
+                               Foreground="{StaticResource MutedBrush}"
+                               FontSize="11"
+                               VerticalAlignment="Center"
+                               Margin="0,0,6,0" />
+                    <Slider x:Name="OpacitySlider"
+                            Width="76"
+                            Minimum="0.45"
+                            Maximum="1"
+                            TickFrequency="0.05"
+                            ValueChanged="OpacitySlider_ValueChanged"
+                            VerticalAlignment="Center"
+                            Margin="0,0,8,0" />
+                    <Button x:Name="TopmostButton"
+                            Style="{StaticResource ToolbarButtonStyle}"
+                            Content="PIN"
+                            ToolTip="Always on top"
+                            Click="TopmostButton_Click"
+                            Margin="0,0,6,0" />
+                    <Button x:Name="LockButton"
+                            Style="{StaticResource ToolbarButtonStyle}"
+                            Content="LOCK"
+                            ToolTip="Lock movement"
+                            Click="LockButton_Click"
+                            Margin="0,0,6,0" />
+                    <Button Style="{StaticResource ToolbarButtonStyle}"
+                            Content="X"
+                            ToolTip="Exit"
+                            MinWidth="30"
+                            Padding="0"
+                            Click="ExitButton_Click" />
+                </StackPanel>
+            </Grid>
+
+            <UniformGrid Grid.Row="1"
+                         Rows="2"
+                         Columns="2"
+                         Margin="-5,4,-5,-5">
+                <Border Style="{StaticResource MetricCardStyle}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="CPU"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       FontSize="12"
+                                       FontWeight="SemiBold" />
+                            <TextBlock x:Name="CpuValueText"
+                                       Grid.Column="1"
+                                       Foreground="{StaticResource CpuBrush}"
+                                       FontSize="24"
+                                       FontWeight="Bold"
+                                       Text="--%" />
+                        </Grid>
+                        <controls:UsageGraph x:Name="CpuGraph"
+                                             Grid.Row="1"
+                                             MinHeight="44"
+                                             Margin="0,8,0,6"
+                                             AccentBrush="{StaticResource CpuBrush}" />
+                        <TextBlock x:Name="CpuDetailText"
+                                   Grid.Row="2"
+                                   Foreground="{StaticResource MutedBrush}"
+                                   FontSize="11"
+                                   TextTrimming="CharacterEllipsis"
+                                   Text="Total processor load" />
+                    </Grid>
+                </Border>
+
+                <Border Style="{StaticResource MetricCardStyle}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="MEM"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       FontSize="12"
+                                       FontWeight="SemiBold" />
+                            <TextBlock x:Name="MemoryValueText"
+                                       Grid.Column="1"
+                                       Foreground="{StaticResource MemoryBrush}"
+                                       FontSize="24"
+                                       FontWeight="Bold"
+                                       Text="--%" />
+                        </Grid>
+                        <controls:UsageGraph x:Name="MemoryGraph"
+                                             Grid.Row="1"
+                                             MinHeight="44"
+                                             Margin="0,8,0,6"
+                                             AccentBrush="{StaticResource MemoryBrush}" />
+                        <TextBlock x:Name="MemoryDetailText"
+                                   Grid.Row="2"
+                                   Foreground="{StaticResource MutedBrush}"
+                                   FontSize="11"
+                                   TextTrimming="CharacterEllipsis"
+                                   Text="Physical memory" />
+                    </Grid>
+                </Border>
+
+                <Border Style="{StaticResource MetricCardStyle}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="GPU"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       FontSize="12"
+                                       FontWeight="SemiBold" />
+                            <TextBlock x:Name="GpuValueText"
+                                       Grid.Column="1"
+                                       Foreground="{StaticResource GpuBrush}"
+                                       FontSize="24"
+                                       FontWeight="Bold"
+                                       Text="--%" />
+                        </Grid>
+                        <controls:UsageGraph x:Name="GpuGraph"
+                                             Grid.Row="1"
+                                             MinHeight="44"
+                                             Margin="0,8,0,6"
+                                             AccentBrush="{StaticResource GpuBrush}" />
+                        <TextBlock x:Name="GpuDetailText"
+                                   Grid.Row="2"
+                                   Foreground="{StaticResource MutedBrush}"
+                                   FontSize="11"
+                                   TextTrimming="CharacterEllipsis"
+                                   Text="GPU sensor" />
+                    </Grid>
+                </Border>
+
+                <Border Style="{StaticResource MetricCardStyle}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="VRAM"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       FontSize="12"
+                                       FontWeight="SemiBold" />
+                            <TextBlock x:Name="VramValueText"
+                                       Grid.Column="1"
+                                       Foreground="{StaticResource VramBrush}"
+                                       FontSize="24"
+                                       FontWeight="Bold"
+                                       Text="--%" />
+                        </Grid>
+                        <controls:UsageGraph x:Name="VramGraph"
+                                             Grid.Row="1"
+                                             MinHeight="44"
+                                             Margin="0,8,0,6"
+                                             AccentBrush="{StaticResource VramBrush}" />
+                        <TextBlock x:Name="VramDetailText"
+                                   Grid.Row="2"
+                                   Foreground="{StaticResource MutedBrush}"
+                                   FontSize="11"
+                                   TextTrimming="CharacterEllipsis"
+                                   Text="Video memory" />
+                    </Grid>
+                </Border>
+            </UniformGrid>
+        </Grid>
+    </Border>
+</Window>
