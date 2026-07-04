@@ -10,6 +10,10 @@ namespace PcMonitorOverlay.Controls;
 
 public sealed class UsageGraph : FrameworkElement
 {
+    private static readonly WpfPen GridPen = CreateFrozenPen(WpfColor.FromArgb(38, 255, 255, 255), 1);
+    private static readonly WpfPen ThresholdPen = CreateFrozenPen(WpfColor.FromArgb(80, 255, 116, 97), 1);
+    private static readonly WpfPen EmptyStatePen = CreateFrozenPen(WpfColor.FromArgb(80, 255, 255, 255), 1);
+
     public static readonly DependencyProperty AccentBrushProperty =
         DependencyProperty.Register(
             nameof(AccentBrush),
@@ -66,19 +70,14 @@ public sealed class UsageGraph : FrameworkElement
 
     private void DrawGrid(DrawingContext drawingContext, double width, double height)
     {
-        var gridPen = new WpfPen(new SolidColorBrush(WpfColor.FromArgb(38, 255, 255, 255)), 1);
-        gridPen.Freeze();
-
         for (var i = 1; i < 4; i++)
         {
             var y = height * i / 4d;
-            drawingContext.DrawLine(gridPen, new WpfPoint(0, y), new WpfPoint(width, y));
+            drawingContext.DrawLine(GridPen, new WpfPoint(0, y), new WpfPoint(width, y));
         }
 
-        var thresholdPen = new WpfPen(new SolidColorBrush(WpfColor.FromArgb(80, 255, 116, 97)), 1);
-        thresholdPen.Freeze();
         var thresholdY = height * 0.2d;
-        drawingContext.DrawLine(thresholdPen, new WpfPoint(0, thresholdY), new WpfPoint(width, thresholdY));
+        drawingContext.DrawLine(ThresholdPen, new WpfPoint(0, thresholdY), new WpfPoint(width, thresholdY));
     }
 
     private List<WpfPoint> BuildPoints(double width, double height)
@@ -138,6 +137,10 @@ public sealed class UsageGraph : FrameworkElement
             EndLineCap = PenLineCap.Round,
             LineJoin = PenLineJoin.Round
         };
+        if (linePen.CanFreeze)
+        {
+            linePen.Freeze();
+        }
 
         var geometry = new StreamGeometry();
         using (var context = geometry.Open())
@@ -155,8 +158,16 @@ public sealed class UsageGraph : FrameworkElement
 
     private static void DrawEmptyState(DrawingContext drawingContext, double width, double height)
     {
-        var pen = new WpfPen(new SolidColorBrush(WpfColor.FromArgb(80, 255, 255, 255)), 1);
+        drawingContext.DrawLine(EmptyStatePen, new WpfPoint(0, height * 0.5), new WpfPoint(width, height * 0.5));
+    }
+
+    private static WpfPen CreateFrozenPen(WpfColor color, double thickness)
+    {
+        var brush = new SolidColorBrush(color);
+        brush.Freeze();
+
+        var pen = new WpfPen(brush, thickness);
         pen.Freeze();
-        drawingContext.DrawLine(pen, new WpfPoint(0, height * 0.5), new WpfPoint(width, height * 0.5));
+        return pen;
     }
 }

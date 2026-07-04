@@ -30,7 +30,10 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _timer;
     private readonly HardwareMonitorService _monitor;
     private readonly OverlaySettings _settings;
+    private readonly CancellationTokenSource _refreshCancellation = new();
     private bool _settingsApplied;
+    private bool _isClosing;
+    private bool _refreshInProgress;
     private Forms.NotifyIcon? _notifyIcon;
     private Drawing.Icon? _trayIcon;
     private Forms.ToolStripMenuItem? _topmostMenuItem;
@@ -46,32 +49,73 @@ public partial class MainWindow : Window
         {
             Interval = TimeSpan.FromSeconds(1)
         };
-        _timer.Tick += (_, _) => RefreshMetrics();
+        _timer.Tick += async (_, _) => await RefreshMetricsAsync();
 
         ApplySettings();
         _settingsApplied = true;
         CreateTrayIcon();
     }
 
-    private void Window_Loaded(object sender, RoutedEventArgs e)
+    private async void Window_Loaded(object sender, RoutedEventArgs e)
     {
-        RefreshMetrics();
         _timer.Start();
+        await RefreshMetricsAsync();
     }
 
     private void Window_Closing(object? sender, CancelEventArgs e)
     {
+        _isClosing = true;
         SaveSettings();
         _timer.Stop();
+        _refreshCancellation.Cancel();
         _monitor.Dispose();
+        _refreshCancellation.Dispose();
         _notifyIcon?.Dispose();
         _trayIcon?.Dispose();
     }
 
-    private void RefreshMetrics()
+    private async Task RefreshMetricsAsync()
     {
-        var snapshot = _monitor.ReadSnapshot();
+        if (_isClosing || _refreshInProgress)
+        {
+            return;
+        }
 
+        _refreshInProgress = true;
+
+        try
+        {
+            var token = _refreshCancellation.Token;
+            var snapshot = await Task.Run(_monitor.ReadSnapshot, token);
+
+            if (token.IsCancellationRequested || _isClosing)
+            {
+                return;
+            }
+
+            UpdateMetrics(snapshot);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+        catch
+        {
+            if (!_isClosing)
+            {
+                StatusText.Text = "Sensor error";
+            }
+        }
+        finally
+        {
+            _refreshInProgress = false;
+        }
+    }
+
+    private void UpdateMetrics(MonitorSnapshot snapshot)
+    {
         UpdateMetric(snapshot.Cpu, CpuValueText, CpuDetailText, CpuGraph);
         UpdateMetric(snapshot.Memory, MemoryValueText, MemoryDetailText, MemoryGraph);
         UpdateMetric(snapshot.Gpu, GpuValueText, GpuDetailText, GpuGraph);

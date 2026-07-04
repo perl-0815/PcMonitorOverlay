@@ -5,8 +5,16 @@ namespace PcMonitorOverlay.Services;
 
 public sealed class HardwareMonitorService : IDisposable
 {
+    private static readonly TimeSpan GpuRefreshInterval = TimeSpan.FromSeconds(3);
+
     private readonly SystemMetricsReader _systemMetrics = new();
     private readonly Computer _computer;
+    private readonly object _sync = new();
+    private readonly IHardware[] _gpuHardware;
+    private GpuReadings _cachedGpuReadings = new(
+        Unavailable("GPU", "GPU sensor pending"),
+        Unavailable("VRAM", "VRAM sensor pending"));
+    private DateTimeOffset _lastGpuRefresh = DateTimeOffset.MinValue;
     private bool _disposed;
 
     public HardwareMonitorService()
@@ -23,31 +31,40 @@ public sealed class HardwareMonitorService : IDisposable
         };
 
         _computer.Open();
+        _gpuHardware = _computer.Hardware.Where(IsGpuHardware).ToArray();
     }
 
     public MonitorSnapshot ReadSnapshot()
     {
-        var cpu = ReadCpu();
-        var memory = ReadMemory();
-        var gpuInfo = ReadGpu();
+        lock (_sync)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
 
-        return new MonitorSnapshot(
-            cpu,
-            memory,
-            gpuInfo.Gpu,
-            gpuInfo.Vram,
-            DateTimeOffset.Now);
+            var cpu = ReadCpu();
+            var memory = ReadMemory();
+            var gpuInfo = ReadGpu();
+
+            return new MonitorSnapshot(
+                cpu,
+                memory,
+                gpuInfo.Gpu,
+                gpuInfo.Vram,
+                DateTimeOffset.Now);
+        }
     }
 
     public void Dispose()
     {
-        if (_disposed)
+        lock (_sync)
         {
-            return;
-        }
+            if (_disposed)
+            {
+                return;
+            }
 
-        _computer.Close();
-        _disposed = true;
+            _computer.Close();
+            _disposed = true;
+        }
     }
 
     private MetricReading ReadCpu()
@@ -74,10 +91,15 @@ public sealed class HardwareMonitorService : IDisposable
 
     private GpuReadings ReadGpu()
     {
+        var now = DateTimeOffset.UtcNow;
+        if (now - _lastGpuRefresh < GpuRefreshInterval)
+        {
+            return _cachedGpuReadings;
+        }
+
         try
         {
-            var gpus = _computer.Hardware
-                .Where(IsGpuHardware)
+            var gpus = _gpuHardware
                 .Select(ReadGpuHardware)
                 .Where(reading => reading is not null)
                 .Cast<GpuHardwareReading>()
@@ -85,9 +107,11 @@ public sealed class HardwareMonitorService : IDisposable
 
             if (gpus.Count == 0)
             {
-                return new GpuReadings(
+                _cachedGpuReadings = new GpuReadings(
                     Unavailable("GPU", "No GPU sensor"),
                     Unavailable("VRAM", "No VRAM sensor"));
+                _lastGpuRefresh = now;
+                return _cachedGpuReadings;
             }
 
             var selected = gpus
@@ -104,13 +128,17 @@ public sealed class HardwareMonitorService : IDisposable
                 ? Unavailable("VRAM", vramDetail)
                 : new MetricReading("VRAM", selected.VramPercent, vramDetail);
 
-            return new GpuReadings(gpu, vram);
+            _cachedGpuReadings = new GpuReadings(gpu, vram);
+            _lastGpuRefresh = now;
+            return _cachedGpuReadings;
         }
         catch
         {
-            return new GpuReadings(
+            _cachedGpuReadings = new GpuReadings(
                 Unavailable("GPU", "GPU sensor error"),
                 Unavailable("VRAM", "VRAM sensor error"));
+            _lastGpuRefresh = now;
+            return _cachedGpuReadings;
         }
     }
 
